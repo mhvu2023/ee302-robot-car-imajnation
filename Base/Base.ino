@@ -1,16 +1,3 @@
-/***********************************************************************
- * Exp2_DriveForward -- RedBot Experiment 2
- * 
- * Drive forward and stop.
- * 
- * Hardware setup:
- * The Power switch must be on, the motors must be connected, and the board must be receiving power 
- * from the battery. The motor switch must also be switched to RUN.
- *
- * 23 Sept 2013 N. Seidle/M. Hord
- * 04 Oct 2014 B. Huang
- ***********************************************************************/
-
 #include <RedBot.h>  // This line "includes" the RedBot library into your sketch.
 // Provides special objects, methods, and functions for the RedBot.
 
@@ -21,9 +8,6 @@ Line followers, distance sensors, digital motor controller
 RedBotSensor rightFollower = RedBotSensor(A0);
 RedBotSensor middleFollower = RedBotSensor(A1);
 RedBotSensor leftFollower = RedBotSensor(A2);
-const int leftDistance = A3;
-const int frontDistance = A4;
-const int rightDistance = A5;
 
 /*
 A is left, B is right
@@ -31,13 +15,15 @@ A is left, B is right
 const int AIN1 = 13;
 const int AIN2 = 12;
 const int PWMA = 11;
-const int BIN1 = 8;
-const int BIN2 = 9;
 const int PWMB = 10;
+const int BIN2 = 9;
+const int BIN1 = 8;
+
+String output;
+
 //Motor gain related constants
-const int threshold = 750;
-const int speedBase = 50;
-const int increment = 15;
+const int blackThreshold = 750;
+const int redThreshold = 400;
 
 int speedL;
 int speedR;
@@ -52,31 +38,94 @@ void setup() {
   digitalWrite(AIN2, LOW);
   digitalWrite(BIN1, HIGH);
   digitalWrite(BIN2, LOW);
-  analogWrite(PWMA, 0); 
-  analogWrite(PWMB, 50);
+  analogWrite(PWMA, 0); /* LEFT */
+  analogWrite(PWMB, 0); /* RIGHT */
 
 }
 
 void loop() {
   int switchVal = digitalRead(7);
-  String output;
-
+  
   output = lineFollowerStats();
   Serial.println(output);
-  delay(500);
+  delay(1000);
+  
   output = distanceSensorStats();
   Serial.println(output);
-  delay(500);
+  delay(1000);
+  
 
+  /* SENSOR DATA: Line Followers */
+  /*
+  Serial.println("Left: " + String(leftSensor.read()) + 
+  ", Middle: "+ String(middleSensor.read()) + 
+  ", Right: " + String(rightSensor.read()));
+  delay(1000);
+  */
 
-
- if ((rightSensor.read() > threshold) && (leftSensor.read() > threshold) && (middleSensor.read() > threshold)) {
-   //Motor output 0
-   analogWrite(PWMA, 0);
+  /* SENSOR DATA: Distance Sensors */
+  /*
+  Serial.println("Left: " + String(analogRead(A3)) + 
+  ", Front: "+ String(analogRead(A4)) + 
+  ", Right: " + String(analogRead(A5)));
+  delay(1000);
+  */
+  
+  /*
+   * END
+   * If all line followers read red
+   * Stop all motors
+   *
+   */
+ if((rightFollower.read() < redThreshold) && 
+    (leftFollower.read() < redThreshold) && 
+    (middleFollower.read() < redThreshold)) {
+  /* 
+   *  STOP MOTORS
+   */
+   analogWrite(PWMA, 0); 
    analogWrite(PWMB, 0);
+   
+ } else if((rightFollower.read() > blackThreshold) && 
+    (leftFollower.read() > blackThreshold) && 
+    (middleFollower.read() > blackThreshold)) {
+  /*
+   * VARYING SPEED
+   * If all 3 line followers detect black
+   * Full send the motors
+   * 
+   */
+   analogWrite(PWMA, 100); 
+   analogWrite(PWMB, 100);
+ 
+ } else if((rightFollower.read() > blackThreshold) && 
+    (leftFollower.read() < blackThreshold)) {
+   /*
+   * Power is added based off of reading from IR sensors
+   * Middle sensor on line = normal power
+   * Right sensor reading = cut power on right and add to left
+   * Left sensor reading = cut power on left and add to right
+   */
+    analogWrite(PWMA, 75); /* LEFT */
+    analogWrite(PWMB, 50); /* RIGHT */
+    delay(500);
+    analogWrite(PWMA, 50); /* LEFT */
+    analogWrite(PWMB, 50); /* RIGHT */
+      
+ } else if ((rightFollower.read() < blackThreshold) && 
+    (leftFollower.read() > blackThreshold)) {
+    analogWrite(PWMA, 50); /* LEFT */
+    analogWrite(PWMB, 75); /* RIGHT */
+    delay(500);
+    analogWrite(PWMA, 50); /* LEFT */
+    analogWrite(PWMB, 50); /* RIGHT */
+    
  } else {
-   analogWrite(speedL, 0);
-   analogWrite(speedR, 0);
+  /*
+   * whatever setting motor to speed is for the left and right motor
+   */
+   analogWrite(PWMA, 50); 
+   analogWrite(PWMB, 50);
  }
 
  
@@ -86,20 +135,6 @@ void loop() {
  * Right sensor reading = cut power on right and add to left
  * Left sensor reading = cut power on left and add to right
  */
-
- /*
-  if(middleSensor.read() > threshold) {
-    speedL = -speedBase;
-    speedR = speedBase;
-  } else if (rightSensor.read() > threshold) {
-    leftSpeed = -(speedBase + increment);
-    rightSpeed = (speedBase - increment);
-  } else if (leftSensor.read() > threshold) {
-    leftSpeed = -(speedBase - increment);
-    rightSpeed = (speedBase + increment);
-  } 
-
-  */
 
   /*
    * IR Sensor value > 700 for black tape = on the line, if right or left exceed this threshold
@@ -116,10 +151,6 @@ void loop() {
    * 
    * Need to get raw input from analog distance sensor for tunnel (adjust turn based on relative distance difference between distance to left and right wall)
    * 
-   *
-   * VARYING SPEED
-   * If all 3 line followers detect black
-   * Full send the motors
    * 
    */
     
@@ -145,24 +176,18 @@ void loop() {
    *
    */
   
-  /*
-   * END
-   * If all line followers read red
-   * Stop all motors
-   *
-   */
-  
 }
 
 String lineFollowerStats(){
-  String output = "Line following sensors:\nLeft: " + String(leftFollower.read()) + ", Middle: "
-  + String(middleFollower.read()) + ", Right: " + String(rightFollower.read());
+  String output = "Line following sensors:\nLeft: " + String(leftFollower.read()) + 
+  ", Middle: " + String(middleFollower.read()) + 
+  ", Right: " + String(rightFollower.read());
   return output;
 }
 
 String distanceSensorStats(){
-  String output = "Distance sensors:\nLeft: " + String(left) + 
-  ", Middle: " + String(analogRead(front)) + 
-  ", Right: " + String(analogRead(right));
+  String output = "Distance sensors:\nLeft: " + String(analogRead(A3)) + 
+  ", Middle: " + String(analogRead(A4)) + 
+  ", Right: " + String(analogRead(A5));
   return output;
 }

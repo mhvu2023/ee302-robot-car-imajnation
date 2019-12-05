@@ -106,6 +106,40 @@ void loop()
    * 
    * 
    */
-
   
+  /*
+   * VARYING SPEED
+   * If all 3 line followers detect black
+   * Full send the motors
+   * 
+   */
+    
+  /*
+   * EXIT HIGHWAY
+   * 
+   */
+    
+  /*
+   * EXIT UNDER CONSTRUCTION
+   * If front distance sensor detects an object (2 to 3 inches)
+   * Turn the car around 180 degrees (set power for a certain speed - no encoders or gyro to use)
+   *
+   */
+  
+  /*
+   * TUNNEL 
+   * If both left and right distance sensors read a value between 2 to 5 inches
+   * Compute difference in distance sensors
+   * Adjust motor speed momentarily depending on sign and value calculated
+   * Delay of half a second
+   * Return back to normal speed
+   *
+   */
+  
+  /*
+   * END
+   * If all line followers read red
+   * Stop all motors
+   *
+   */
 }

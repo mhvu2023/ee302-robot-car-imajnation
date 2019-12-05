@@ -24,6 +24,13 @@ const int PWMA = 11;
 const int BIN1 = 8;
 const int BIN2 = 9;
 const int PWMB = 10;
+const int threshold = 750;
+const int speedBase = 50;
+const int increment = 15;
+
+int speedL;
+int speedR;
+
 
 /*
  * Right to left: A0, A1, A2
@@ -47,6 +54,40 @@ void loop()
   Serial.println("Left: " + String(leftSensor.read()) + ", Middle: "
   + String(middleSensor.read()) + ", Right: " + String(rightSensor.read()));
   delay(500);
+/*
+ * All IR sensors sensing red tape threshold  
+ * (Should be roughly same as black tape)
+ * Motors set to stop 
+ */
+ if((rightSensor.read() > threshold) && (leftSensor.read() > threshold) && (middleSensor.read() > threshold)) {
+  /*Whatever a motor.stop() or whatever is equivalent to
+   */
+   motor.stop();
+ } else {
+  /*
+   * whatever setting motor to speed is for the left and right motor
+   */
+   motor.motorL(speedL);
+   motor.motorR(speedR);
+ }
+/*
+ * Power is added based off of reading from IR sensors
+ * Middle sensor on line = normal power
+ * Right sensor reading = cut power on right and add to left
+ * Left sensor reading = cut power on left and add to right
+ */
+  if(middleSensor.read() > threshold) {
+    speedL = -speedBase;
+    speedR = speedBase;
+  } else if (rightSensor.read() > threshold) {
+    leftSpeed = -(speedBase + increment);
+    rightSpeed = (speedBase - increment);
+  } else if (leftSensor.read() > threshold) {
+    leftSpeed = -(speedBase - increment);
+    rightSpeed = (speedBase + increment);
+  } 
+
+  
 
   /*
    * IR Sensor value > 700 for black tape = on the line, if right or left exceed this threshold

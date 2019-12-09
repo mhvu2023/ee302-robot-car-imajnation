@@ -5,9 +5,9 @@
 Port inputs as constants corresponding to various analog I/O devices
 Line followers, distance sensors, digital motor controller
 */
-RedBotSensor rightFollower = RedBotSensor(A0);
+RedBotSensor leftFollower = RedBotSensor(A0);
 RedBotSensor middleFollower = RedBotSensor(A1);
-RedBotSensor leftFollower = RedBotSensor(A2);
+RedBotSensor rightFollower = RedBotSensor(A2);
 
 /*
 A is left, B is right
@@ -25,8 +25,10 @@ String output;
 const int blackThreshold = 750;
 const int redThreshold = 400;
 
-int speedL;
-int speedR;
+const int normal = 50;
+const int adjust = 70;
+const int turn = 100;
+const int wallDist = 600;
 
 /*
  * Right to left: A0, A1, A2
@@ -60,7 +62,7 @@ void loop() {
   Serial.println("Left: " + String(leftSensor.read()) + 
   ", Middle: "+ String(middleSensor.read()) + 
   ", Right: " + String(rightSensor.read()));
-  delay(1000);
+  delay(turn0);
   */
 
   /* SENSOR DATA: Distance Sensors */
@@ -68,7 +70,7 @@ void loop() {
   Serial.println("Left: " + String(analogRead(A3)) + 
   ", Front: "+ String(analogRead(A4)) + 
   ", Right: " + String(analogRead(A5)));
-  delay(1000);
+  delay(turn0);
   */
   
   /*
@@ -95,8 +97,8 @@ void loop() {
    * Full send the motors
    * 
    */
-   analogWrite(PWMA, 100); 
-   analogWrite(PWMB, 100);
+   analogWrite(PWMA, turn); 
+   analogWrite(PWMB, turn);
  
  } else if((rightFollower.read() > blackThreshold) && 
     (leftFollower.read() < blackThreshold)) {
@@ -106,28 +108,76 @@ void loop() {
    * Right sensor reading = cut power on right and add to left
    * Left sensor reading = cut power on left and add to right
    */
-    analogWrite(PWMA, 75); /* LEFT */
-    analogWrite(PWMB, 50); /* RIGHT */
+    analogWrite(PWMA, adjust); /* LEFT */
+    analogWrite(PWMB, normal); /* RIGHT */
     delay(500);
-    analogWrite(PWMA, 50); /* LEFT */
-    analogWrite(PWMB, 50); /* RIGHT */
+    analogWrite(PWMA, normal); /* LEFT */
+    analogWrite(PWMB, normal); /* RIGHT */
       
  } else if ((rightFollower.read() < blackThreshold) && 
     (leftFollower.read() > blackThreshold)) {
-    analogWrite(PWMA, 50); /* LEFT */
-    analogWrite(PWMB, 75); /* RIGHT */
+    analogWrite(PWMA, normal); /* LEFT */
+    analogWrite(PWMB, adjust); /* RIGHT */
     delay(500);
-    analogWrite(PWMA, 50); /* LEFT */
-    analogWrite(PWMB, 50); /* RIGHT */
+    analogWrite(PWMA, normal); /* LEFT */
+    analogWrite(PWMB, normal); /* RIGHT */
     
+ } else if (rightFollower.read() > blackThreshold && leftFollower.read() > blackThreshold) {
+  /*
+   * EXIT HIGHWAY
+   * 
+   */
+   analogWrite(PWMA, turn); /* LEFT */
+   analogWrite(PWMB, normal); /* RIGHT */
+   delay(1500);
+   analogWrite(PWMA, normal); /* LEFT */
+   analogWrite(PWMB, normal); /* RIGHT */
+   
+ } else if (analogRead(A4) > 800) {
+  /*
+   * EXIT UNDER CONSTRUCTION
+   * If front distance sensor detects an object (2 to 3 inches)
+   * Turn the car around 180 degrees (set power for a certain speed - no encoders or gyro to use)
+   *
+   */
+   analogWrite(PWMA, normal); /* LEFT */
+   analogWrite(PWMB, -normal); /* RIGHT */
+   delay(3000); /* Time for 180 degrees */
+   analogWrite(PWMA, normal); /* LEFT */
+   analogWrite(PWMB, normal); /* RIGHT */
+ 
+ } else if (analogRead(A3) > wallDist && analogRead(A5) > wallDist) {
+  /*
+   * TUNNEL 
+   * If both left and right distance sensors read a value between 2 to 5 inches
+   * Compute difference in distance sensors
+   * Adjust motor speed momentarily depending on sign and value calculated
+   * Delay of half a second
+   * Return back to normal speed
+   * A3 Left
+   * A5 Right
+   */
+   if (analogRead(A3) > wallDist) {
+    analogWrite(PWMA, adjust); /* LEFT */
+    analogWrite(PWMB, normal); /* RIGHT */
+    delay(500);
+    analogWrite(PWMA, normal); /* LEFT */
+    analogWrite(PWMB, normal); /* RIGHT */
+   } else if (analogRead(A5) > wallDist) {
+    analogWrite(PWMA, normal); /* LEFT */
+    analogWrite(PWMB, adjust); /* RIGHT */
+    delay(500);
+    analogWrite(PWMA, normal); /* LEFT */
+    analogWrite(PWMB, normal); /* RIGHT */
+   }
+   
  } else {
   /*
    * whatever setting motor to speed is for the left and right motor
    */
-   analogWrite(PWMA, 50); 
-   analogWrite(PWMB, 50);
+   analogWrite(PWMA, normal); 
+   analogWrite(PWMB, normal);
  }
-
  
 /*
  * Power is added based off of reading from IR sensors
@@ -152,28 +202,6 @@ void loop() {
    * Need to get raw input from analog distance sensor for tunnel (adjust turn based on relative distance difference between distance to left and right wall)
    * 
    * 
-   */
-    
-  /*
-   * EXIT HIGHWAY
-   * 
-   */
-    
-  /*
-   * EXIT UNDER CONSTRUCTION
-   * If front distance sensor detects an object (2 to 3 inches)
-   * Turn the car around 180 degrees (set power for a certain speed - no encoders or gyro to use)
-   *
-   */
-  
-  /*
-   * TUNNEL 
-   * If both left and right distance sensors read a value between 2 to 5 inches
-   * Compute difference in distance sensors
-   * Adjust motor speed momentarily depending on sign and value calculated
-   * Delay of half a second
-   * Return back to normal speed
-   *
    */
   
 }
